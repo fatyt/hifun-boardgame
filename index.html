@@ -386,6 +386,38 @@
   <div id="detail-body"></div>
 </dialog>
 
+<!-- 購物清單 -->
+<button type="button" class="cart-fab" id="cart-fab" hidden aria-label="開啟購物清單">
+  <span class="cf-label">購物清單</span><span class="cf-n" id="cart-n">0</span>
+</button>
+<div class="toast" id="toast" role="status" popover="manual"></div>
+<dialog id="cart" class="detail cart" aria-labelledby="cart-title">
+  <button class="close" aria-label="關閉" data-close>×</button>
+  <div class="cart-body">
+    <p class="eyebrow">SHOPPING LIST</p>
+    <h2 class="d-title" id="cart-title">購物清單</h2>
+    <p class="cart-empty" id="cart-empty">清單是空的。在桌遊詳細頁按「加入購物清單」就會出現在這裡。</p>
+    <div id="cart-main" hidden>
+      <ul class="cart-list" id="cart-list"></ul>
+      <div class="cart-total"><span>合計</span><b id="cart-total">NT$ 0</b></div>
+      <fieldset class="cart-pickup" id="cart-pickup">
+        <legend>取貨方式</legend>
+        <label><input type="radio" name="pickup" value="到店自取" checked> 到店自取</label>
+        <label><input type="radio" name="pickup" value="寄送"> 寄送（運費另計）</label>
+      </fieldset>
+      <ol class="cart-steps">
+        <li>按下「用 LINE 下單」，清單會自動帶入 LINE 訊息，補上姓名、手機後送出。</li>
+        <li>店員確認庫存後，回覆付款方式（轉帳或到店付款）。</li>
+        <li>付款完成即保留商品；預訂商品到貨後通知您。</li>
+      </ol>
+      <div class="cart-actions">
+        <button type="button" class="btn btn-ghost" id="cart-clear">清空清單</button>
+        <a class="btn btn-line" id="cart-send" href="#" target="_blank" rel="noopener">用 LINE 下單</a>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <script src="data/games.js"></script>
 <script src="data/events.js"></script>
 <script src="app.js"></script>

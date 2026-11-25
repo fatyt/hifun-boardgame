@@ -292,7 +292,8 @@ function openDetail(g) {
   let saleRow;
   if (onSale(g)) {
     const stock = g.stock === 0 ? "目前缺貨・可預訂" : g.stock ? `現貨 ${g.stock} 盒` : "";
-    saleRow = `<span class="s"><i class="dot ${g.stock === 0 ? "wait" : "ok"}"></i>${money(g.price)}<small>${stock}</small></span><a class="btn btn-shu" data-line data-msg="我想${g.stock === 0 ? "預訂" : "購買"}《${esc(g.name)}》" href="#">${g.stock === 0 ? "預訂" : "詢問購買"}</a>`;
+    const inCart = cartQty(g.name);
+    saleRow = `<span class="s"><i class="dot ${g.stock === 0 ? "wait" : "ok"}"></i>${money(g.price)}<small>${stock}</small></span><button type="button" class="btn btn-shu" data-add="${esc(g.name)}">${inCart ? `已加入 ${inCart} 盒・再加一盒` : g.stock === 0 ? "加入清單・預訂" : "加入購物清單"}</button>`;
   } else saleRow = `<span class="s"><i class="dot no"></i>未販售</span><span></span>`;
 
   $("#detail-body").innerHTML = `<div class="d-grid">
@@ -583,6 +584,160 @@ function renderEvents() {
   } else el.hidden = true;
 }
 
+/* ---------- 購物清單（用 LINE 下單） ---------- */
+// 清單只存在客人自己的瀏覽器；送出時整理成一則 LINE 訊息，由店員確認庫存與付款。
+
+const CART_KEY = "hifun-cart";
+let cart = loadCart(); // [{ name, qty }]
+let cartPickup = "到店自取";
+
+function loadCart() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+    return Array.isArray(v) ? v.filter((x) => x && x.name && x.qty > 0) : [];
+  } catch { return []; }
+}
+function saveCart() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch { /* 無痕模式等情況存不了，清單仍可在本頁使用 */ }
+}
+const cartQty = (name) => cart.find((x) => x.name === name)?.qty || 0;
+const gameByName = (name) => games.find((g) => g.name === name);
+
+// 清單項目對上目前資料（價格、是否還在販售、現貨數）
+function cartLines() {
+  return cart.map((it) => {
+    const g = gameByName(it.name);
+    const sale = g && onSale(g);
+    return {
+      ...it, g, sale,
+      price: sale ? g.price : 0,
+      preorder: sale && g.stock === 0,
+      over: sale && g.stock > 0 && it.qty > g.stock, // 超過現貨的部分要等調貨
+    };
+  });
+}
+
+function addToCart(name) {
+  const g = gameByName(name);
+  if (!g || !onSale(g)) return;
+  const it = cart.find((x) => x.name === name);
+  if (it) it.qty = Math.min(it.qty + 1, 20);
+  else cart.push({ name, qty: 1 });
+  saveCart();
+  renderCartFab(true);
+}
+
+function setQty(name, qty) {
+  const it = cart.find((x) => x.name === name);
+  if (!it) return;
+  if (qty <= 0) cart = cart.filter((x) => x !== it);
+  else it.qty = Math.min(qty, 20);
+  saveCart();
+  renderCartFab();
+  renderCart();
+}
+
+function renderCartFab(bump = false) {
+  const fab = $("#cart-fab");
+  const n = cart.reduce((s, x) => s + x.qty, 0);
+  fab.hidden = n === 0;
+  $("#cart-n").textContent = n;
+  if (bump) { fab.classList.remove("bump"); void fab.offsetWidth; fab.classList.add("bump"); }
+}
+
+function orderMessage(lines) {
+  const ok = lines.filter((l) => l.sale);
+  const total = ok.reduce((s, l) => s + l.price * l.qty, 0);
+  const boxes = ok.reduce((s, l) => s + l.qty, 0);
+  const rows = ok.map((l, i) => {
+    const note = l.preorder ? "（預訂）" : l.over ? `（現貨 ${l.g.stock} 盒，其餘預訂）` : "";
+    return `${i + 1}. 《${l.name}》× ${l.qty}${note}　${money(l.price * l.qty)}`;
+  });
+  return [
+    "我想用網站購物清單下單：",
+    ...rows,
+    `合計 ${money(total)}（共 ${boxes} 盒）`,
+    `取貨方式：${cartPickup}${cartPickup === "寄送" ? "（運費另計）" : ""}`,
+    "姓名：",
+    "手機：",
+    ...(cartPickup === "寄送" ? ["寄送地址或 7-11 門市："] : []),
+  ].join("\n");
+}
+
+function renderCart() {
+  const lines = cartLines();
+  const ok = lines.filter((l) => l.sale);
+  const total = ok.reduce((s, l) => s + l.price * l.qty, 0);
+  $("#cart-empty").hidden = lines.length > 0;
+  $("#cart-main").hidden = lines.length === 0;
+  $("#cart-list").innerHTML = lines.map((l) => {
+    const note = !l.sale ? `<small class="warn">目前未販售，下單時不會列入</small>`
+      : l.preorder ? `<small>目前缺貨・預訂</small>`
+      : l.over ? `<small>現貨 ${l.g.stock} 盒，其餘需預訂</small>`
+      : l.g.stock ? `<small>現貨 ${l.g.stock} 盒</small>` : "";
+    return `<li class="cart-item${l.sale ? "" : " off"}">
+      <div class="ci-name"><b>${esc(l.name)}</b>${note}</div>
+      <div class="ci-qty" role="group" aria-label="${esc(l.name)} 數量">
+        <button type="button" data-qty="${esc(l.name)}" data-d="-1" aria-label="減少一盒">−</button>
+        <output>${l.qty}</output>
+        <button type="button" data-qty="${esc(l.name)}" data-d="1" aria-label="增加一盒"${l.sale ? "" : " disabled"}>＋</button>
+      </div>
+      <div class="ci-sum">${l.sale ? money(l.price * l.qty) : "–"}</div>
+      <button type="button" class="ci-del" data-del="${esc(l.name)}" aria-label="從清單移除 ${esc(l.name)}">移除</button>
+    </li>`;
+  }).join("");
+  $("#cart-total").textContent = money(total);
+  const send = $("#cart-send");
+  send.href = lineUrl(orderMessage(lines));
+  send.classList.toggle("disabled", ok.length === 0);
+  send.setAttribute("aria-disabled", ok.length === 0);
+  $$("#cart-pickup input").forEach((r) => (r.checked = r.value === cartPickup));
+}
+
+function openCart() {
+  renderCart();
+  $("#cart").showModal();
+}
+
+function bindCart() {
+  const dlg = $("#cart");
+  $("#cart-fab").addEventListener("click", openCart);
+  dlg.addEventListener("click", (e) => {
+    if (e.target === dlg || e.target.closest("[data-close]")) return dlg.close();
+    const q = e.target.closest("[data-qty]");
+    if (q) return setQty(q.dataset.qty, cartQty(q.dataset.qty) + +q.dataset.d);
+    const d = e.target.closest("[data-del]");
+    if (d) return setQty(d.dataset.del, 0);
+    if (e.target.closest("#cart-clear") && confirm("確定清空購物清單？")) { cart = []; saveCart(); renderCartFab(); renderCart(); }
+    const send = e.target.closest("#cart-send");
+    if (send && send.classList.contains("disabled")) e.preventDefault();
+  });
+  $("#cart-pickup").addEventListener("change", (e) => { cartPickup = e.target.value; renderCart(); });
+  // 詳細頁的「加入購物清單」
+  $("#detail").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-add]");
+    if (!b) return;
+    addToCart(b.dataset.add);
+    b.textContent = `已加入 ${cartQty(b.dataset.add)} 盒・再加一盒`;
+    showToast(`已加入購物清單：《${b.dataset.add}》`);
+  });
+  // 其他分頁改了清單時同步
+  window.addEventListener("storage", (e) => { if (e.key === CART_KEY) { cart = loadCart(); renderCartFab(); } });
+}
+
+let toastTimer;
+function showToast(text) {
+  // 用 popover 放進最上層，詳細頁的對話框開著時也看得到
+  const t = $("#toast");
+  const show = () => { try { t.hidePopover(); t.showPopover(); } catch { t.classList.add("on"); } };
+  const hide = () => { try { t.hidePopover(); } catch { /* 不支援 popover */ } t.classList.remove("on"); };
+  t.innerHTML = `${esc(text)}<button type="button" class="toast-go">查看清單</button>`;
+  show();
+  t.querySelector(".toast-go").onclick = () => { hide(); $("#detail").close(); openCart(); };
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hide, 3500);
+}
+
 /* ---------- 事件 ---------- */
 
 function wireLineLinks(root = document) {
@@ -676,9 +831,11 @@ function bindEvents() {
 
 (async function init() {
   bindEvents();
+  bindCart();
   wireLineLinks();
   const [g, ev] = await Promise.all([loadGames(), loadEvents()]);
   games = g.list;
+  renderCartFab();
   $("#source").textContent = g.source;
   buildTagChips();
   renderCounts();
