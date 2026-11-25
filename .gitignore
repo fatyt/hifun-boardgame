@@ -1,0 +1,9 @@
+# 不公開：庫存與整理用的資料、個人設定、內部說明
+data/匯入/
+.claude/
+.mcp.json
+tools/
+images/line/
+換電腦設定.md
+說明.md
+*.ps1

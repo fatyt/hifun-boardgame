@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <rect width="800" height="800" fill="#efe9dd"/>
+  <rect x="24" y="24" width="752" height="752" fill="none" stroke="#ddd5c6" stroke-width="2"/>
+  <g transform="translate(400 340)">
+    <rect x="-210" y="-200" width="200" height="290" rx="4" fill="#fffdf8" stroke="#ddd5c6" stroke-width="3"/>
+    <rect x="10" y="-200" width="200" height="290" rx="4" fill="#fffdf8" stroke="#ddd5c6" stroke-width="3"/>
+    <rect x="-180" y="-170" width="90" height="14" fill="#b8463a"/>
+    <g fill="#d8cfbf">
+      <rect x="-180" y="-136" width="140" height="8"/><rect x="-180" y="-114" width="130" height="8"/>
+      <rect x="-180" y="-92" width="140" height="8"/><rect x="-180" y="-70" width="100" height="8"/>
+      <rect x="-180" y="-30" width="140" height="70" rx="4"/>
+      <rect x="40" y="-170" width="140" height="8"/><rect x="40" y="-148" width="120" height="8"/>
+      <rect x="40" y="-126" width="140" height="8"/><rect x="40" y="-104" width="90" height="8"/>
+      <rect x="40" y="-60" width="140" height="8"/><rect x="40" y="-38" width="130" height="8"/>
+      <rect x="40" y="-16" width="140" height="8"/><rect x="40" y="6" width="110" height="8"/>
+    </g>
+  </g>
+  <text x="400" y="660" text-anchor="middle" font-family="Noto Serif TC, PMingLiU, serif" font-size="40" font-weight="700" fill="#2b2824" letter-spacing="8">規則說明</text>
+  <text x="400" y="712" text-anchor="middle" font-family="Noto Sans TC, Microsoft JhengHei, sans-serif" font-size="22" fill="#8f877b" letter-spacing="6">範例圖片 · 請換成實際照片</text>
+</svg>
