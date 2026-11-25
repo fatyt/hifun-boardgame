@@ -1,6 +1,6 @@
 /*
  * 範例桌遊資料（原型用）。
- * 正式上線時可改由 Google 試算表提供，見 app.js 的 CONFIG.SHEET_CSV_URL 與「說明.md」。
+ * 正式上線時可改由 Google 試算表提供，見 app.js 的 CONFIG.SHEET_CSV_URL 與專案的 README.md。
  *
  * 欄位說明：
  *  name 名稱 / en 英文名 / min,max 人數 / time 分鐘 / age 建議年齡 / weight 難度 1輕 2中 3重
