@@ -81,7 +81,7 @@ function fromSheet(rows) {
       const min = num(g("最少人數"));
       const w = num(g("難度"));
       return {
-        name: g("名稱"), en: g("英文名"),
+        id: g("編號"), name: g("名稱"), en: g("英文名"),
         min, max: num(g("最多人數")) || min,
         time: num(g("時間")), age: num(g("年齡")), weight: w ? Math.min(3, Math.max(1, w)) : 0,
         tags: g("類型").split(/[、,，/\s]+/).map((s) => s.trim()).filter(Boolean),
@@ -320,6 +320,26 @@ function openDetail(g) {
   wireLineLinks($("#detail-body"));
   $("#detail").showModal();
   initCarousel($("#detail-body .carousel"));
+  setGameParam(gameKey(g));
+}
+
+/* ---------- 每款遊戲的專屬網址（?game=G002，供分享與 Google Merchant Center） ---------- */
+
+const gameKey = (g) => g.id || g.name;
+
+function setGameParam(key) {
+  const url = new URL(location.href);
+  if (key) url.searchParams.set("game", key);
+  else url.searchParams.delete("game");
+  if (url.href !== location.href) history.replaceState(null, "", url);
+}
+
+function openGameFromUrl() {
+  const key = new URLSearchParams(location.search).get("game");
+  if (!key) return;
+  const g = games.find((x) => x.id === key) || games.find((x) => x.name === key);
+  if (g) openDetail(g);
+  else setGameParam(null);
 }
 
 /* ---------- 圖片輪播 ---------- */
@@ -817,6 +837,7 @@ function bindEvents() {
   dlg.addEventListener("click", (e) => {
     if (e.target === dlg || e.target.closest("[data-close]")) dlg.close();
   });
+  dlg.addEventListener("close", () => setGameParam(null));
 
   $$(".stepper button").forEach((b) =>
     b.addEventListener("click", () => {
@@ -843,4 +864,5 @@ function bindEvents() {
   events = prepareEvents(ev.list);
   $("#ev-source").textContent = ev.source;
   renderEvents();
+  openGameFromUrl();
 })();
