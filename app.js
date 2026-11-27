@@ -261,14 +261,24 @@ function isAddOn(g) {
   return /\bexpansion\b|\bex\.$/i.test(g.en);
 }
 
-// 首頁「收藏桌遊」：同一款的不同版本（中英版、豪華版、主題版…）只算一次。
-// 中文名去掉括號內的版本說明相同，或英文名相同，就視為同一款。
+// 庫存填 0＝已售完；庫存空白＝只有開盒、不販售，仍算
+const soldOut = (g) => g.stock === 0;
+
+// 店長確認過：名稱相近但要分開算的版本（2026/11/27）
+// 吸爆鬆餅（新）、快手疊杯（舒視版）、花磚密語（迷你版）、拼布對決：臺灣意象、
+// 矮人礦坑（20週年紀念版）、誰是牛頭王（豪華版）、UNO 寶可夢、UNO Flip 變形金剛
+const SEPARATE_TITLES = new Set(["G317", "G481", "G834", "G514", "G756", "G884", "G178", "G894"]);
+
+// 首頁「收藏桌遊」：同一款的不同版本（中英版、大盒版…）只算一次。
+// 中文名去掉括號內的版本說明相同，或英文名相同，就視為同一款；SEPARATE_TITLES 例外。
+// 擴充、配件、庫存 0 不算。
 function countTitles(list) {
   const parent = new Map();
   const find = (k) => { while (parent.get(k) !== k) k = parent.get(k); return k; };
   const link = (a, b) => { parent.set(find(a), find(b)); };
   const add = (k) => { if (!parent.has(k)) parent.set(k, k); return k; };
-  list.filter((g) => !isAddOn(g)).forEach((g) => {
+  list.filter((g) => !isAddOn(g) && !soldOut(g)).forEach((g) => {
+    if (SEPARATE_TITLES.has(g.id)) { add("id:" + g.id); return; }
     const zh = add("zh:" + g.name.replace(/[（(][^）)]*[）)]/g, "").replace(/\s+/g, "").toLowerCase());
     const en = g.en.replace(/[^a-z0-9]/gi, "").toLowerCase();
     if (en) link(zh, add("en:" + en));
@@ -290,8 +300,8 @@ function renderCounts() {
   $("#stat-all").textContent = countTitles(games);
   // 店內可玩：排除擴充、同名（同一款不同版本）只算一次
   $("#stat-play").textContent = countTitles(games.filter((g) => g.play));
-  // 現在可租：租借欄為「可租」才算，「不租」「已租出」都不算
-  $("#stat-rent").textContent = games.filter(canRent).length;
+  // 現在可租：租借欄為「可租」才算（「不租」「已租出」不算），再排除擴充、配件、庫存 0
+  $("#stat-rent").textContent = games.filter((g) => canRent(g) && !isAddOn(g) && !soldOut(g)).length;
 }
 
 function buildTagChips() {
