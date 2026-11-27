@@ -378,14 +378,16 @@ function openGameFromUrl() {
 
 /* ---------- 圖片輪播 ---------- */
 
-function carouselHTML(g) {
+// opts.zoom：圖片可點選放大（開啟 #lightbox）
+function carouselHTML(g, opts = {}) {
   const imgs = g.images || [];
   if (!imgs.length) return `<div class="carousel single">${coverHTML(g, { noHot: true })}</div>`;
   const n = imgs.length;
-  return `<div class="carousel" role="region" aria-roledescription="輪播" aria-label="${esc(g.name)} 圖片">
+  return `<div class="carousel${opts.zoom ? " zoomable" : ""}" role="region" aria-roledescription="輪播" aria-label="${esc(g.name)} 圖片">
     <div class="track" tabindex="0">
       ${imgs.map((src, i) => `<figure class="slide" aria-roledescription="圖片" aria-label="第 ${i + 1} 張，共 ${n} 張">
         <img src="${esc(src)}" alt="${esc(g.name)} 圖片 ${i + 1}" ${i ? 'loading="lazy"' : ""}>
+        ${opts.zoom ? `<button type="button" class="zoom-hit" data-zoom="${i}" aria-label="放大檢視第 ${i + 1} 張"></button>` : ""}
       </figure>`).join("")}
     </div>
     ${n > 1 ? `
@@ -398,7 +400,7 @@ function carouselHTML(g) {
   </div>`;
 }
 
-function initCarousel(root) {
+function initCarousel(root, start = 0) {
   if (!root || root.classList.contains("single")) return;
   const track = $(".track", root);
   const slides = $$(".slide", track);
@@ -444,6 +446,25 @@ function initCarousel(root) {
     if (e.key === "ArrowLeft") { e.preventDefault(); go(idx - 1); }
     if (e.key === "ArrowRight") { e.preventDefault(); go(idx + 1); }
   });
+
+  if (start) {
+    show(start);
+    lockUntil = Date.now() + 300;
+    track.style.scrollBehavior = "auto";
+    track.scrollLeft = start * track.clientWidth;
+    track.style.scrollBehavior = "";
+  }
+}
+
+// 點輪播圖片放大檢視：同一組圖片在全螢幕的 #lightbox 再開一次輪播
+function openLightbox(carousel, start) {
+  const imgs = $$(".slide img", carousel).map((im) => im.getAttribute("src"));
+  const name = carousel.getAttribute("aria-label").replace(/ 圖片$/, "");
+  const box = $("#lightbox");
+  $("#lightbox-body").innerHTML = carouselHTML({ name, images: imgs });
+  box.showModal();
+  initCarousel($("#lightbox-body .carousel"), start);
+  $("#lightbox-body .track").focus({ preventScroll: true });
 }
 
 /* ---------- 今天玩什麼 ---------- */
@@ -547,6 +568,7 @@ function fromEventSheet(rows) {
         games: g("相關桌遊").split(/[、,，\n]+/).map((s) => s.trim()).filter(Boolean),
         cap: num(g("人數上限")), joined: num(g("已報名")),
         fee: g("費用"), place: g("地點"), host: g("帶領人"), status: g("狀態"),
+        images: g("圖片").split(/[\s、，,|]+/).filter(Boolean).map(imageUrl),
       };
     })
     .filter((e) => e.title && e.date);
@@ -612,7 +634,8 @@ function eventHTML(e) {
         ${time ? `<span>${time}</span>` : ""}${e.place ? `<span>${esc(e.place)}</span>` : ""}${e.host ? `<span>帶領：${esc(e.host)}</span>` : ""}
       </div>
       <h3>${esc(e.title)}</h3>
-      ${e.desc ? `<p class="ev-desc">${esc(e.desc)}</p>` : ""}
+      ${e.images?.length ? `<div class="ev-media">${carouselHTML({ name: e.title, images: e.images }, { zoom: true })}</div>` : ""}
+      ${e.desc ?`<p class="ev-desc">${esc(e.desc)}</p>` : ""}
       ${gameChips ? `<div class="ev-games">相關桌遊　${gameChips}</div>` : ""}
     </div>
     <div class="ev-side">
@@ -628,6 +651,7 @@ function renderEvents() {
   $("#ev-list").innerHTML = list.map(eventHTML).join("");
   $("#ev-empty").hidden = list.length > 0;
   wireLineLinks($("#ev-list"));
+  $$("#ev-list .carousel").forEach((c) => initCarousel(c));
 
   // 首頁顯示最近一場可報名的活動
   const next = events.find((e) => eventState(e) === "open");
@@ -872,6 +896,17 @@ function bindEvents() {
     if (e.target === dlg || e.target.closest("[data-close]")) dlg.close();
   });
   dlg.addEventListener("close", () => setGameParam(null));
+
+  // 活動卡片圖片：點選放大
+  document.addEventListener("click", (e) => {
+    const z = e.target.closest("[data-zoom]");
+    if (z) openLightbox(z.closest(".carousel"), +z.dataset.zoom);
+  });
+  const lb = $("#lightbox");
+  lb.addEventListener("click", (e) => {
+    if (e.target === lb || e.target.closest("[data-close]") || e.target.classList.contains("slide")) lb.close();
+  });
+  lb.addEventListener("close", () => { $("#lightbox-body").innerHTML = ""; });
 
   $$(".stepper button").forEach((b) =>
     b.addEventListener("click", () => {
