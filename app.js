@@ -254,6 +254,28 @@ function goPage(n) {
   window.scrollTo({ top, behavior: "smooth" });
 }
 
+// 擴充、配件不算一款獨立桌遊；「含擴充」「＋擴充」的同捆組仍算本體
+function isAddOn(g) {
+  if (g.tags.includes("擴充") || g.tags.includes("配件")) return true;
+  if (/擴充|擴展/.test(g.name) && !/含.{0,3}擴充|[+＋]/.test(g.name)) return true;
+  return /\bexpansion\b|\bex\.$/i.test(g.en);
+}
+
+// 首頁「收藏桌遊」：同一款的不同版本（中英版、豪華版、主題版…）只算一次。
+// 中文名去掉括號內的版本說明相同，或英文名相同，就視為同一款。
+function countTitles(list) {
+  const parent = new Map();
+  const find = (k) => { while (parent.get(k) !== k) k = parent.get(k); return k; };
+  const link = (a, b) => { parent.set(find(a), find(b)); };
+  const add = (k) => { if (!parent.has(k)) parent.set(k, k); return k; };
+  list.filter((g) => !isAddOn(g)).forEach((g) => {
+    const zh = add("zh:" + g.name.replace(/[（(][^）)]*[）)]/g, "").replace(/\s+/g, "").toLowerCase());
+    const en = g.en.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    if (en) link(zh, add("en:" + en));
+  });
+  return new Set([...parent.keys()].map(find)).size;
+}
+
 function renderCounts() {
   const n = {
     all: games.length,
@@ -265,8 +287,10 @@ function renderCounts() {
     const label = b.textContent.replace(/\s*\d+$/, "");
     b.innerHTML = `${label}<span class="n">${n[b.dataset.tab]}</span>`;
   });
-  $("#stat-all").textContent = n.all;
-  $("#stat-play").textContent = n.play;
+  $("#stat-all").textContent = countTitles(games);
+  // 店內可玩：排除擴充、同名（同一款不同版本）只算一次
+  $("#stat-play").textContent = countTitles(games.filter((g) => g.play));
+  // 現在可租：租借欄為「可租」才算，「不租」「已租出」都不算
   $("#stat-rent").textContent = games.filter(canRent).length;
 }
 
