@@ -140,7 +140,7 @@ function metaText(g) {
 }
 
 function coverHTML(g, opts = {}) {
-  const badge = g.isNew ? `<i class="badge">新品</i>` : g.hot && !opts.noHot ? `<i class="badge hot">人氣</i>` : "";
+  const badge = g.isNew ? `<i class="badge">新進貨</i>` : g.hot && !opts.noHot ? `<i class="badge hot">人氣</i>` : "";
   const imgs = g.images || [];
   if (opts.photo && imgs.length) {
     return `<div class="cover photo" style="--c:${colorOf(g.name)}">
